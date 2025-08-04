@@ -1,0 +1,2097 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RS Admin Tool</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+      background: #f9f9f9;
+      overflow-x: hidden;
+    }
+
+    .view {
+      display: none;
+      width: 100%;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
+    .view.active {
+      display: block;
+    }
+
+    #menuButtons {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      margin-top: 10px;
+
+      /* Animation styles */
+      transition: transform 0.4s ease, opacity 0.4s ease;
+      transform: translateY(0);
+      opacity: 1;
+
+      position: relative;
+      z-index: 1;
+    }
+
+    #menuButtons.slide-out {
+      transform: translateY(-100%);
+      opacity: 0;
+      pointer-events: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+    }
+
+    #menuButtons.slide-in {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+      position: relative;
+    }
+
+    #menuButtons .button,
+    .button {
+      display: block;
+      width: 240px;
+      margin: 10px 0;
+      padding: 14px 20px;
+      font-size: 16px;
+      font-weight: bold;
+      color: #ffffff;
+      background-color: #2563EB;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      text-align: center;
+      text-decoration: none;
+    }
+
+    #menuButtons .button:hover,
+    .button:hover {
+      background-color: #1e4bb8;
+    }
+
+    @keyframes slideUpFadeIn {
+      from {
+        transform: translateY(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .swipe-up-enter {
+      animation: slideUpFadeIn 0.4s ease forwards;
+    }
+
+    @keyframes slideDownFadeOut {
+      from {
+        transform: translateY(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateY(100%);
+        opacity: 0;
+      }
+    }
+
+    .swipe-up-enter {
+      animation: slideUpFadeIn 0.4s ease forwards;
+      pointer-events: none; /* disable interaction during animation */
+    }
+
+    .swipe-down-exit {
+      animation: slideDownFadeOut 0.3s ease forwards;
+      pointer-events: none; /* disable interaction during animation */
+    }
+
+    .swipe-up-enter,
+    .swipe-down-exit {
+    position: absolute;
+      width: 100%;
+      left: 0;
+      top: 0;
+    }
+	  
+    .back-button {
+      display: inline-block;
+      margin: 0 auto 5px auto;        /* center + spacing below */
+      cursor: pointer;
+      color: white;
+      background-color: #2563EB;       /* Tailwind blue-600 */
+      font-weight: bold;
+      font-size: 14px;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      text-align: center;
+      text-decoration: none;
+      transition: background-color 0.2s ease;
+    }
+    .back-button:hover {
+      background-color: #1e40af;       /* Tailwind blue-800 */
+    }
+
+    #agentsForm {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-width: 300px;
+      margin: 0 auto;
+    }
+
+    #agentsForm input {
+      margin-top: 8px;
+      padding: 6px;
+      width: 120px;
+    }
+
+    #agentsForm .button {
+      margin-top: 12px;
+    }
+
+    .or-divider {
+      width: 100%;
+      text-align: center;
+      border-top: 1px solid #ccc;
+      margin: 15px 0;
+      position: relative;
+    }
+
+    .or-divider span {
+      background: #f9f9f9;
+      padding: 0 8px;
+      position: relative;
+      top: -11px;
+      color: #666;
+      font-size: 14px;
+    }
+
+    table {
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px 12px;
+      text-align: left;
+    }
+    tr.highlight {
+      background-color: #dbeafe;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    #calendarContainer, #timeSlotsContainer, #calendarLoading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .calendar-grid button {
+      width: 100%;
+      padding: 10px 5px;
+      font-size: 14px;
+    }
+
+    .time-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .time-grid .button {
+      width: auto;
+      min-width: 80px;
+      max-width: 100px;
+      padding: 6px 8px;
+      font-size: 13px;
+    }
+
+    #notificationBanner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background-color: #2563EB;
+      color: white;
+      text-align: center;
+      padding: 12px;
+      font-weight: bold;
+      z-index: 1000;
+      transition: opacity 0.4s ease;
+    }
+
+    #notificationBanner.error {
+      background-color: #dc2626;
+    }
+
+    #notificationBanner.success {
+      background-color: #16a34a;
+    }
+
+    #notificationBanner.warning {
+      background-color: #f59e0b;
+    }
+
+    #notificationBanner.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .button.busy-slot {
+      background-color: #e5e7eb;
+      color: #6b7280;
+      text-decoration: line-through;
+      cursor: not-allowed;
+    }
+
+    #confirmationContainer {
+      transition: opacity 0.3s ease;
+      will-change: transform, opacity;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 12px;               /* slightly reduced spacing */
+      margin-top: 20px;        /* reduced from 40px */
+      padding: 10px 20px;      /* optional: tighter padding */
+    }
+
+    /* Support view styles */
+    #supportView textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    #supportThanksView {
+      text-align: center;
+      padding: 20px;
+      font-size: 16px;
+      color: #2563EB;
+    }
+
+    #redistributeLoading {
+      display: none;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+
+  <script type="text/javascript" src="https://eia.followupboss.com/embeddedApps-v1.0.1.js"></script>
+</head>
+
+<body>
+  <div id="notificationBanner" class="hidden"></div> <!-- 🔔 Add this line -->
+  <!-- Container for Current User Info -->
+  <div id="currentUser"></div>
+
+  <!-- Main Menu Buttons -->
+  <div id="menuButtons" class="view">
+    <button class="button" onclick="showView('redistributeView'); startRedistribute();">⚠️ Instant Assign ⚠️</button>
+    <button class="button" onclick="showView('zipSearchView')">📅 Appointment Assistant</button>
+    <button class="button" onclick="showView('agentsView')">🔍 Find available agents</button>
+    <button class="button" onclick="showView('supportView')">💬 Support</button>
+  </div>
+
+  <!-- Redistribute View -->
+  <div id="redistributeView" class="view">
+    <span class="back-button" onclick="goBack()">← Back</span>
+    <div id="redistributeLoading" class="hidden"></div>
+    <div id="redistributeResult" class="hidden"></div>
+	<div id="calendarLoading" class="hidden">
+	  <h3 style="text-align:center; margin-top:40px;">
+		Retrieving upcoming Appointment details and generating availability...
+	  </h3>
+	</div>
+
+	<div id="calendarContainer" class="hidden"></div>
+    <div id="timeSlotsContainer" class="hidden"></div>
+    <div id="appointmentFormContainer" class="hidden"></div>
+  </div>
+
+
+  <div id="zipSearchView" class="view">
+    <span class="back-button" onclick="goBack()">← Back</span>
+    <h2 style="text-align: center;">Appointment Setter</h2>
+
+    <div id="apptSetterOptions" style="display: flex; flex-direction: column; align-items: center; gap: 16px; margin-top: 20px;">
+      <button class="button" onclick="initApptSetterForAssignedAgent()" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <img src="https://raw.githubusercontent.com/keiganakers634/zip-search-embed/main/single_person.png" alt="Single person" style="height: 20px;" />
+        For this Agent
+      </button>
+      <button class="button" onclick="showHelpMeFindForm()" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <img src="https://raw.githubusercontent.com/keiganakers634/zip-search-embed/main/group_person.png" alt="Group of people" style="height: 20px;" />
+        Help me find one!
+      </button>
+    </div>
+
+    <div id="helpMeFindForm" class="hidden" style="margin-top: 20px; display: flex; flex-direction: column; align-items: center;">
+      <label for="zipInputHelper"><strong>Zip Code:</strong></label>
+      <input type="text" id="zipInputHelper" maxlength="5" />
+      <button class="button" onclick="searchAvailableAgentsByZip()">Search</button>
+
+      <div class="or-divider"><span>OR</span></div>
+      <button class="button" onclick="useRecentInquiryZipHelper()">Use Most Recent Inquiry</button>
+    </div>
+  </div>
+
+  <!-- Agents View -->
+  <div id="agentsView" class="view">
+    <span class="back-button" onclick="goBack()">← Back</span>
+    <h2 style="text-align: center;">Available Agents</h2>
+
+    <div id="agentsForm">
+      <label for="zipInput"><strong>Zip Code:</strong></label>
+      <input type="text" id="zipInput" maxlength="5" />
+      <button class="button" onclick="searchAgents()">Search</button>
+
+      <div class="or-divider"><span>OR</span></div>
+
+      <button class="button" onclick="useMostRecentInquiry()">Use Most Recent Inquiry</button>
+    </div>
+
+    <div id="agentsLoading" class="hidden" style="margin-top:20px;">
+      Pulling Agent Details...
+    </div>
+
+    <div id="agentsTableContainer" class="hidden"></div>
+  </div> <!-- ✅ Moved here to properly wrap all child elements -->
+
+  <!-- Support View -->
+  <div id="supportView" class="view">
+    <span class="back-button" onclick="goBack()">← Back</span>
+    <h2 style="text-align: center;">Need Help?</h2>
+
+    <div style="margin-top: 20px; text-align: center;">
+      <p><strong>Reported by:</strong> <span id="supportUserName">(loading...)</span></p>
+      <p><strong>Email for follow-up:</strong> <span id="supportUserEmail">(loading...)</span></p>
+      <p><strong>Lead:</strong> <span id="supportLeadName">(loading...)</span></p>
+    </div>
+
+    <div style="margin-top: 20px; display: flex; flex-direction: column; align-items: center;">
+      <label for="supportDetails"><strong>Just give us the details:</strong></label>
+      <textarea id="supportDetails" rows="5" style="width: 100%; max-width: 320px; margin-top: 10px; padding: 10px; font-size: 14px;"></textarea>
+      <button class="button" style="margin-top: 16px;" onclick="submitSupport()">Submit</button>
+    </div>
+  </div>
+
+  <!-- Support Thanks View -->
+  <div id="supportThanksView" class="view">
+    <span class="back-button" onclick="goBack()">← Back</span>
+    <h2>Thanks!</h2>
+    <p style="text-align: center;">We've got all the details and will follow up right away.</p>
+    <p style="text-align: center;"><strong>Need immediate support?</strong><br>
+      Call <a href="tel:4072714341">407-271-4341</a> and press 5 when prompted.</p>
+  </div>
+
+  <!-- Confirmation View -->
+  <div id="confirmationContainer" class="view hidden"></div>
+	
+  <script>
+    let zipGroupsData = [];
+
+    // Load JSON data
+    fetch("https://keiganakers634.github.io/zip-search-embed/zips.json")
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("Failed to load zip data JSON.");
+        }
+        return response.json();
+      })
+      .then(data => {
+        zipGroupsData = data;
+        console.log("Loaded zipGroupsData:", zipGroupsData);
+      })
+      .catch(err => {
+        console.error("Error loading zipGroupsData:", err);
+        showBanner("Failed to load Group Data. Try again.", "error");
+      });
+
+	async function verifyContextAndShowData() {
+	  const secret = "f38bd4dfb990d163f4f8bc070cc1da16";
+	  const params = new URLSearchParams(window.location.search);
+	  const contextB64 = params.get("context");
+	  const signature = params.get("signature");
+
+	  if (!contextB64 || !signature) {
+	    document.body.insertAdjacentHTML(
+	      "afterbegin",
+	      `<div style="background:#ffdddd; padding:10px; color:#800;">
+	        ⚠️ No context or signature found in URL.
+	      </div>`
+	    );
+	    return;
+	  }
+
+	  try {
+	    const decodedString = atob(contextB64);
+	    const contextObj = JSON.parse(decodedString);
+
+	    const enc = new TextEncoder();
+	    const key = await crypto.subtle.importKey(
+	      "raw",
+	      enc.encode(secret),
+	      { name: "HMAC", hash: "SHA-256" },
+	      false,
+	      ["sign"]
+	    );
+
+	    const sigBuffer = await crypto.subtle.sign(
+	      "HMAC",
+	      key,
+	      enc.encode(contextB64)
+	    );
+
+	    const calculatedSig = Array.from(new Uint8Array(sigBuffer))
+	      .map(b => b.toString(16).padStart(2, "0"))
+	      .join("");
+
+	    if (calculatedSig === signature) {
+	      console.log("✅ Signature is valid!");
+
+	      const userName = contextObj?.user?.name || "(Unknown)";
+	      const userEmail = contextObj?.user?.email?.toLowerCase() || "(Unknown)";
+	      window.contextPersonId = contextObj?.person?.id || null;
+	      window.contextPersonZip = contextObj?.person?.postalCode || null;
+	      const first = contextObj?.person?.firstName || "";
+	      const last = contextObj?.person?.lastName || "";
+	      window.contextPersonName = `${first} ${last}`.trim();
+	      window.contextPersonStageId = contextObj?.person?.stage?.id || null;
+	      window.contextPersonStageName = contextObj?.person?.stage?.name || null;
+
+	      window.contextUserId = contextObj?.user?.id || null;
+	      window.contextUserName = contextObj?.user?.name || null;
+              window.contextUserEmail = contextObj?.user?.email || null;
+
+	      document.getElementById("supportUserName").textContent = window.contextUserName;
+	      document.getElementById("supportUserEmail").textContent = window.contextUserEmail;
+	      document.getElementById("supportLeadName").textContent = window.contextPersonName;
+	      document.getElementById("currentUser").innerHTML = `
+	        <div style="background:#eef; padding:10px; border:1px solid #99f; margin-bottom:20px;">
+	          👤 <strong>Current User:</strong> ${userName} (${userEmail})
+	        </div>
+	      `;
+
+	      const authorizedEmails = [
+	        "keigan.akers@robertslack.com",
+	        "fubadmin@robertslack.com",
+	        "cat.flanagan@robertslack.com",
+	        "francisco.garcia@robertslack.com",
+		"matt.brown@robertslack.com",
+		"diedre.lambert@robertslack.com",
+		"danw@robertslack.com",
+		"elle.walters@robertslack.com",
+		"jbwarren@robertslack.com",
+		"jarod.wiczen@robertslack.com",
+		"Ashley.vilmenay@robertslack.com",
+		"carol.toffolon@robertslack.com",
+		"dj.elomina@robertslack.com",
+		"j.garcia@robertslack.com",
+		"juan.castellanos@robertslack.com",
+		"julian.casanova@robertslack.com",
+		"kevin.flanagan@robertslack.com",
+		"max.fernandez@robertslack.com",
+		"melissa.rummells@robertslack.com",
+		"stephanie.atyeo@robertslack.com",
+                "alissa.gunion@robertslack.com",
+                "kimberly.bly@robertslack.com",
+		"alicia.hollinger@robertslack.com",
+		"ana.mitchell@robertslack.com",
+		"colleen.cunningham@robertslack.com",
+		"mark.taylor@robertslack.com",
+		"matt.kole@robertslack.com",
+		"robby.lyons@robertslack.com",
+		"ryan.raymond@robertslack.com",
+                "evelyn.hernandez@roberslack.com",
+		"celecia.sookram@robertslack.com",
+		"angela.williams@robertslack.com",
+		"asia.hightower@robertslack.com",
+		"josh.haskins@robertslack.com",
+		"maura.fox@robertslack.com",
+		"noelle.quinones@robertslack.com",
+		"rachel.solorzano@robertslack.com",
+		"yasmine.aladin@robertslack.com",
+		"joe.mahoney@robertslack.com",
+                "fub.tn@robertslack.com",
+                "zack.julian@robertslack.com",
+                "faith.julian@robertslack.com"
+	      ];
+
+	      if (authorizedEmails.includes(userEmail)) {
+	        window.isAuthorized = true;
+	        showView("menuButtons");
+	      } else {
+	        window.isAuthorized = false;
+	        document.getElementById("menuButtons").style.display = "none";
+
+	        document.body.insertAdjacentHTML(
+	          "beforeend",
+	          `<div style="background:#ffdddd; padding:15px; color:#800; border:1px solid #f00; margin-top:20px;">
+	            ❌ <strong>Unauthorized user:</strong> This internal tool is currently for RS Admin Staff Only!
+	          </div>`
+	        );
+
+	        console.log("❌ User unauthorized:", userEmail);
+	      }
+	    } else {
+	      console.error("❌ Signature verification failed!");
+	      document.body.insertAdjacentHTML(
+	        "afterbegin",
+	        `<div style="background:#ffdddd; padding:10px; color:#800;">
+	          ❌ Signature verification failed!
+	        </div>`
+	      );
+	    }
+	  } catch (e) {
+	    console.error("Error decoding context:", e);
+	    document.body.insertAdjacentHTML(
+	      "afterbegin",
+	      `<div style="background:#ffdddd; padding:10px; color:#800;">
+	        ❌ Error decoding context data.
+	      </div>`
+	    );
+	  }
+	}
+
+
+    verifyContextAndShowData();
+
+    let activeView = null;
+
+	function showView(viewId) {
+	  if (!window.isAuthorized && viewId !== "menuButtons") {
+	    showBanner("Sorry! This Tool is currently only for Admin Staff. More info Coming Soon!", "warning");
+	    return;
+	  }
+	
+	  const menuButtons = document.getElementById("menuButtons");
+	
+	  // Animate the menu out if we're leaving the main menu
+	  if (viewId !== "menuButtons") {
+	    menuButtons.classList.remove("slide-in");
+	    menuButtons.classList.add("slide-out");
+	
+	    setTimeout(() => {
+	      if (menuButtons.classList.contains("slide-out")) {
+	        menuButtons.style.display = "none";
+	      }
+	    }, 400); // match animation
+	  } else {
+	    menuButtons.classList.remove("slide-out");
+	    menuButtons.classList.add("slide-in");
+	    menuButtons.style.display = "flex"; // Restore layout if hidden
+	  }
+	
+	  // Animate out current view (if any) before hiding
+	  if (window.activeView && window.activeView.id !== viewId) {
+	    window.activeView.classList.add("swipe-down-exit");
+	
+	    setTimeout(() => {
+	      window.activeView.classList.remove("swipe-down-exit");
+	      window.activeView.classList.remove("active");
+	    }, 300); // match exit animation duration
+	  }
+	
+	  // ✅ Clear all inner sub-views for consistent behavior
+	  [
+	    "calendarLoading",
+	    "calendarContainer",
+	    "timeSlotsContainer",
+	    "appointmentFormContainer",
+	    "agentsLoading",
+	    "agentsTableContainer",
+	    "redistributeLoading",
+	    "redistributeResult",
+	    "confirmationContainer",
+	    "helpMeFindForm"
+	  ].forEach(id => {
+	    const el = document.getElementById(id);
+	    if (el) {
+	      el.classList.add("hidden");
+	
+	      // Clear dynamic content for views that populate with innerHTML
+	      if (["agentsTableContainer", "calendarContainer", "timeSlotsContainer", "appointmentFormContainer", "redistributeResult", "confirmationContainer"].includes(id)) {
+	        el.innerHTML = "";
+	      }
+	    }
+	  });
+	
+	// Activate the requested view
+	const newView = document.getElementById(viewId);
+	if (newView) {
+	  newView.classList.remove("active", "swipe-down-exit", "swipe-up-enter");
+	  newView.classList.add("swipe-up-enter");
+	  window.activeView = newView; // ✅ Make this available for next transition
+	
+	  setTimeout(() => {
+	    newView.classList.remove("swipe-up-enter");
+	    newView.classList.add("active");
+	  }, 400); // match entrance animation
+	}
+
+	
+	  // Show/hide current user banner depending on view
+	  document.getElementById("currentUser").style.display =
+	    viewId === "menuButtons" ? "block" : "none";
+	}
+
+
+
+
+
+
+	function goBack() {
+	  showView("menuButtons");
+	
+	  // === Clear Global State ===
+	  window.assignedAgentId = null;
+	  window.assignedAgentName = null;
+	  window.groupAgentAvailability = null;
+	  window.redistributeAgent = null;
+	  window.redistributeEntry = null;
+	  window.redistributeZip = null;
+	
+	  // === Reset DOM elements ===
+	  const zipInput = document.getElementById("zipInput");
+	  if (zipInput) zipInput.value = "";
+	
+	  const zipInputHelper = document.getElementById("zipInputHelper");
+	  if (zipInputHelper) zipInputHelper.value = "";
+	
+	  const agentsForm = document.getElementById("agentsForm");
+	  if (agentsForm) agentsForm.classList.remove("hidden");
+	
+	  const agentsLoading = document.getElementById("agentsLoading");
+	  if (agentsLoading) agentsLoading.classList.add("hidden");
+	
+	  const agentsTable = document.getElementById("agentsTableContainer");
+	  if (agentsTable) {
+	    agentsTable.classList.add("hidden");
+	    agentsTable.innerHTML = "";
+	  }
+	
+	  const calendar = document.getElementById("calendarContainer");
+	  if (calendar) {
+	    calendar.classList.add("hidden");
+	    calendar.innerHTML = "";
+	  }
+	
+	  const timeSlots = document.getElementById("timeSlotsContainer");
+	  if (timeSlots) {
+	    timeSlots.classList.add("hidden");
+	    timeSlots.innerHTML = "";
+	  }
+	
+	  const formContainer = document.getElementById("appointmentFormContainer");
+	  if (formContainer) {
+	    formContainer.classList.add("hidden");
+	    formContainer.innerHTML = "";
+	  }
+	
+	  const helpForm = document.getElementById("helpMeFindForm");
+	  if (helpForm) {
+	    helpForm.classList.add("hidden");
+	  }
+	
+	  const apptOptions = document.getElementById("apptSetterOptions");
+	  if (apptOptions) {
+	    apptOptions.classList.remove("hidden");
+	  }
+	
+	  const confirmContainer = document.getElementById("confirmationContainer");
+  	  if (confirmContainer && !confirmContainer.classList.contains("hidden")) {
+	    confirmContainer.classList.add("swipe-down-exit");
+	
+	    setTimeout(() => {
+	      confirmContainer.classList.add("hidden");
+	      confirmContainer.classList.remove("swipe-down-exit");
+	      confirmContainer.innerHTML = "";
+	    }, 300); // match animation duration
+	  } else {
+	    // fallback if container is already hidden
+	    confirmContainer?.classList.add("hidden");
+	    confirmContainer.innerHTML = "";
+	  }
+	    const redistributeResult = document.getElementById("redistributeResult");
+	    if (redistributeResult) {
+	      redistributeResult.classList.add("hidden");
+	      redistributeResult.innerHTML = "";
+	    }
+
+	  // Remove all back buttons on view reset
+	  document.querySelectorAll(".back-button").forEach(btn => btn.remove());
+	}
+
+	function searchAgents() {
+	  const zip = document.getElementById("zipInput").value.trim();
+	  if (!/^\d{5}$/.test(zip)) {
+	    showBanner("Please enter a valid zip code.", "warning");
+	    return;
+	  }
+	
+	  window.lastZipSearch = zip;
+	
+	  findGroupByZip(zip);
+	}
+
+
+
+    async function useMostRecentInquiry() {
+      if (!window.contextPersonId) {
+        showBanner("No PersonId Found", "warning");
+        return;
+      }
+
+      const apiKey = "ZmthXzBLbFZIZVBiSUU3d0VveW5NM1VZaTIzbUNXa3NQTWd0RWM6";
+      const url = `https://api.followupboss.com/v1/events?limit=10&offset=0&personId=${window.contextPersonId}&type=Inquiry,%20Seller%20Inquiry,%20Property%20Inquiry,%20General%20Inquiry&hasProperty=true`;
+
+      try {
+        const res = await fetch(url, {
+          headers: {
+            "accept": "application/json",
+            "authorization": `Basic ${apiKey}`
+          }
+        });
+
+        if (!res.ok) throw new Error("API error fetching recent inquiries.");
+
+        const data = await res.json();
+        const events = data.events || [];
+
+        if (events.length === 0) {
+          showBanner("No Valid property inquiries on this lead! Try typing a zip code", "warning");
+          return;
+        }
+
+        // Find the most recent event with property and property.code
+        const sorted = events
+          .filter(ev => ev.property && ev.property.code)
+          .sort((a, b) => new Date(b.created) - new Date(a.created));
+
+        if (sorted.length === 0) {
+          showBanner("No Valid property inquiries on this lead! Try typing a zip code", "warning");
+          return;
+        }
+
+		const zip = sorted[0].property.code;
+		console.log("Using zip code from recent inquiry:", zip);
+		window.lastZipSearch = zip;
+		findGroupByZip(zip);
+
+
+      } catch (err) {
+        showBanner("Failed to load recent inquiry data for this lead...Try entering a Zip instead", "error");
+        console.error(err);
+      }
+    }
+
+	async function getLatLngForZip(zip) {
+	  const res = await fetch(`https://api.zippopotam.us/us/${zip}`);
+	  if (!res.ok) throw new Error("Failed to get location data for ZIP");
+	  const data = await res.json();
+
+	  const place = data.places[0];
+	  return {
+	    lat: parseFloat(place.latitude),
+	    lng: parseFloat(place.longitude)
+	  };
+	}
+
+	function haversineDistance(lat1, lon1, lat2, lon2) {
+	  const toRad = angle => (angle * Math.PI) / 180;
+	  const R = 6371;
+	  const dLat = toRad(lat2 - lat1);
+	  const dLon = toRad(lon2 - lon1);
+	  const a = Math.sin(dLat / 2) ** 2 +
+	            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+	            Math.sin(dLon / 2) ** 2;
+	  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+	  return R * c;
+	}
+
+	async function findClosestZipEntry(zip) {
+	  try {
+	    const { lat, lng } = await getLatLngForZip(zip);
+
+	    let closest = null;
+	    let minDistance = Infinity;
+
+	    for (const entry of zipGroupsData) {
+	      if (!entry.lat || !entry.lng) continue;
+
+	      const dist = haversineDistance(lat, lng, entry.lat, entry.lng);
+	      if (dist < minDistance) {
+	        minDistance = dist;
+	        closest = entry;
+	      }
+	    }
+
+	    return closest;
+	  } catch (err) {
+	    console.error("Geolocation lookup failed:", err);
+	    return null;
+	  }
+	}
+
+
+
+	function findGroupByZip(zip) {
+	  if (zipGroupsData.length === 0) {
+	    showBanner("Group Data for this Zip is unavailable", "error");
+	    return;
+	  }
+	
+	  const zipStr = zip.toString().padStart(5, "0");
+	  const exactEntry = zipGroupsData.find(item => item.zip.toString().padStart(5, "0") === zipStr);
+	
+	  if (exactEntry) {
+	    loadGroupData(exactEntry, zipStr);
+	  } else {
+	    (async () => {
+	      try {
+	        const { lat, lng } = await getLatLngForZip(zipStr);
+	        let closest = null;
+	        let minDistance = Infinity;
+	
+	        for (const entry of zipGroupsData) {
+	          if (!entry.lat || !entry.lng) continue;
+	          const dist = haversineDistance(lat, lng, entry.lat, entry.lng);
+	          if (dist < minDistance) {
+	            minDistance = dist;
+	            closest = entry;
+	          }
+	        }
+	
+	        if (closest) {
+	          showBanner(`⚠️ No exact match for ${zipStr}. Using closest zip ${closest.zip}.`, "warning");
+	          loadGroupData(closest, zipStr);
+	        } else {
+	          showBanner("We have no Groups Near this zip code!", "error");
+	        }
+	      } catch (err) {
+	        console.error("Zip lookup failed:", err);
+	        showBanner("We couldn't get location info for that ZIP code.", "error");
+	      }
+	    })();
+	  }
+	}
+
+
+
+    async function loadGroupData(entry, searchedZip) {
+      document.getElementById("agentsForm").classList.add("hidden");
+      document.getElementById("agentsLoading").classList.remove("hidden");
+      console.log("👉 Entry passed to loadGroupData:", entry);
+      console.log("👉 typeof entry.groupId:", typeof entry.groupId);
+      console.log("👉 Fetching from:", `https://api.followupboss.com/v1/groups/${entry.groupId}`);
+	    
+      const apiKey = "ZmthXzBLbFZIZVBiSUU3d0VveW5NM1VZaTIzbUNXa3NQTWd0RWM6";
+      const url = `https://api.followupboss.com/v1/groups/${entry.groupId}`;
+
+      try {
+        const res = await fetch(url, {
+          headers: {
+            "accept": "application/json",
+            "authorization": `Basic ${apiKey}`
+          }
+        });
+
+        if (!res.ok) throw new Error("API error");
+
+        const data = await res.json();
+		renderAgents(entry, data, searchedZip);
+      } catch (err) {
+        showBanner("No Group data available for this zip...Try another", "error");
+        console.error(err);
+        goBack();
+      }
+    }
+
+    function renderAgents(entry, groupData, searchedZip) {
+      const container = document.getElementById("agentsTableContainer");
+      container.innerHTML = "";
+
+      const nextId = groupData.nextRoundRobinUser;
+      const activeAgents = groupData.users.filter(u => !u.pauseLeadDistribution);
+
+      let html = `
+        <h3>Team: ${entry.team}</h3>
+        <h4>Group: ${entry.group}</h4>
+		<h4>Zip Used: ${searchedZip}</h4>
+        <table>
+          <tr>
+            <th>Photo</th>
+            <th>Name</th>
+            <th>Action</th>
+          </tr>
+      `;
+
+      for (const agent of activeAgents) {
+        const isNext = agent.id === nextId;
+        const photoHTML = agent.picture?.["60x60"]
+          ? `<img src="${agent.picture["60x60"]}" alt="${agent.name}" style="border-radius: 50%;" />`
+          : `<div style="
+                width: 60px;
+                height: 60px;
+                border-radius: 50%;
+                background-color: #2563EB;
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                font-size: 16px;
+                font-family: sans-serif;
+              ">RS</div>`;
+        html += `
+          <tr class="${isNext ? 'highlight' : ''}">
+            <td>${photoHTML}</td>
+            <td>${agent.name}</td>
+            <td>
+		<button class="button" style="padding:5px 10px; font-size:12px;"
+		  onclick='executeRedistribution(${JSON.stringify(agent)}, ${JSON.stringify(entry)}, "${searchedZip}")'>
+		  ${isNext ? "Next in Line!" : "Reassign"}
+		</button>
+            </td>
+          </tr>
+        `;
+      }
+
+      html += "</table>";
+
+      container.innerHTML = html;
+      document.getElementById("agentsLoading").classList.add("hidden");
+      container.classList.remove("hidden");
+    }
+
+	function showHelpMeFindForm() {
+	  document.getElementById("apptSetterOptions").classList.add("hidden");
+	  document.getElementById("helpMeFindForm").classList.remove("hidden");
+	}
+
+	function searchAvailableAgentsByZip() {
+	  document.getElementById("helpMeFindForm").classList.add("hidden");
+	  const zip = document.getElementById("zipInputHelper").value.trim();
+	  if (!/^\d{5}$/.test(zip)) {
+	    showBanner("Please enter a valid zip code.", "warning");
+	    return;
+	  }
+	  findAgentsWithAvailability(zip);
+	}
+
+	async function useRecentInquiryZipHelper() {
+	  // Hide the helper form
+	  document.getElementById("helpMeFindForm").classList.add("hidden");
+	
+	  if (!window.contextPersonId) {
+	    alert("Missing personId in context.");
+	    return;
+	  }
+	
+	  const apiKey = "ZmthXzBLbFZIZVBiSUU3d0VveW5NM1VZaTIzbUNXa3NQTWd0RWM6";
+	  const url = `https://api.followupboss.com/v1/events?limit=10&offset=0&personId=${window.contextPersonId}&type=Inquiry,%20Seller%20Inquiry,%20Property%20Inquiry,%20General%20Inquiry&hasProperty=true`;
+	
+	  try {
+	    const res = await fetch(url, {
+	      headers: {
+	        "accept": "application/json",
+	        "authorization": `Basic ${apiKey}`
+	      }
+	    });
+	
+	    if (!res.ok) throw new Error("Failed to load recent inquiries.");
+	
+	    const data = await res.json();
+	    const events = data.events || [];
+	
+	    const sorted = events.filter(ev => ev.property?.code).sort((a, b) => new Date(b.created) - new Date(a.created));
+	
+	    if (sorted.length === 0) {
+	      showBanner("No valid Property inquiries found for this lead! Try using your own zip code.", "warning");
+	      return;
+	    }
+	
+	    const zip = sorted[0].property.code;
+	    findAgentsWithAvailability(zip);
+	
+	  } catch (err) {
+	    showBanner("No valid Property inquiries found for this lead! Try using your own zip code.", "warning");
+	    console.error(err);
+	  }
+	}
+
+
+	async function findAgentsWithAvailability(zip) {
+	  const entry = zipGroupsData.find(item => item.zip === zip) || await findClosestZipEntry(zip);
+	  if (!entry) {
+	    showBanner("No matching Groups for this zip code!", "error");
+	    return;
+	  }
+
+	  const apiKey = "ZmthXzBLbFZIZVBiSUU3d0VveW5NM1VZaTIzbUNXa3NQTWd0RWM6";
+	  const url = `https://api.followupboss.com/v1/groups/${entry.groupId}`;
+
+	  try {
+	    const res = await fetch(url, {
+	      headers: {
+	        "accept": "application/json",
+	        "authorization": `Basic ${apiKey}`
+	      }
+	    });
+
+	    if (!res.ok) throw new Error("Failed to load group data");
+
+	    const data = await res.json();
+	    const activeAgents = data.users.filter(u => !u.pauseLeadDistribution);
+
+	    // ✅ Show a notification before pulling appointments
+	    showBanner(`Pulling appointment details for ${activeAgents.length} agents in ${entry.group}`, "info");
+
+	    // Fetch appointment data for each agent in parallel
+	    const appointmentPromises = activeAgents.map(agent => fetch(`https://api.followupboss.com/v1/appointments?userId=${agent.id}&limit=100&offset=0`, {
+	      headers: {
+	        "accept": "application/json",
+	        "authorization": `Basic ${apiKey}`
+	      }
+	    }).then(res => res.ok ? res.json() : null).then(json => ({ agent, appointments: json?.appointments || [] })));
+
+	    const results = await Promise.all(appointmentPromises);
+
+	    window.groupAgentAvailability = results.map(r => ({
+	      agent: r.agent,
+	      busy: parseBusyWindows(r.appointments, r.agent.id)
+	    }));
+	    showBanner("✅ Appointment availability loaded!", "success");
+	    renderGroupAvailabilityCalendar();
+
+	  } catch (err) {
+	    showBanner("Hm...We couldn't find nearby agents for this zip. If you think this sounds wrong, Use the support button to send us the lead!", "error");
+	    console.error(err);
+	  }
+	}
+	function renderGroupAvailabilityCalendar() {
+	  // Hide all other subviews before showing the calendar
+	  [
+	    "apptSetterOptions",
+	    "helpMeFindForm",
+	    "zipSearchView",
+	    "calendarLoading",
+	    "timeSlotsContainer",
+	    "appointmentFormContainer"
+	  ].forEach(id => {
+	    const el = document.getElementById(id);
+	    if (el) el.classList.add("hidden");
+	  });
+	  showView("redistributeView");
+
+	  const container = document.getElementById("calendarContainer");
+	  container.classList.remove("hidden");
+	  container.innerHTML = "<h3>Select a Date:</h3>";
+
+	  const grid = document.createElement("div");
+	  grid.className = "calendar-grid";
+
+	  const today = new Date();
+	  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+	  for (const d of dayNames) {
+	    const header = document.createElement("div");
+	    header.style.fontWeight = "bold";
+	    header.style.textAlign = "center";
+	    header.textContent = d;
+	    grid.appendChild(header);
+	  }
+
+	  const weekday = today.getDay();
+	  for (let i = 0; i < weekday; i++) {
+	    grid.appendChild(document.createElement("div"));
+	  }
+
+	  for (let i = 0; i < 14; i++) {
+	    const date = new Date(today);
+	    date.setDate(today.getDate() + i);
+
+	    const btn = document.createElement("button");
+	    btn.textContent = date.getDate();
+	    btn.className = "button";
+	    btn.style.fontSize = "14px";
+	    btn.onclick = () => renderTimeSlotChooser(date);
+
+	    grid.appendChild(btn);
+	  }
+
+	  container.appendChild(grid);
+	}
+
+	function renderTimeSlotChooser(date) {
+	  document.getElementById("calendarContainer").classList.add("hidden");
+	  document.getElementById("timeSlotsContainer").classList.remove("hidden");
+
+	  const container = document.getElementById("timeSlotsContainer");
+	  container.innerHTML = `
+	    <span class="back-button" onclick="goBackToCalendar()">← Back to Calendar</span>
+	    <h4>${date.toDateString()}</h4>
+	  `;
+
+	  const grid = document.createElement("div");
+	  grid.className = "time-grid";
+
+	  for (let hour = 9; hour <= 18; hour++) {
+	    const slotStart = new Date(date);
+	    slotStart.setHours(hour, 0, 0, 0);
+	    const slotEnd = new Date(slotStart);
+	    slotEnd.setHours(hour + 1);
+
+	  const available = window.groupAgentAvailability.filter(({ busy }) => {
+	    return !busy.some(b => {
+	      const oneHour = 60 * 60 * 1000;
+	      const startsTooCloseBefore = (slotStart - b.start) > 0 && (slotStart - b.start) < oneHour;
+	      const endsTooCloseAfter = (b.end - slotEnd) > 0 && (b.end - slotEnd) < oneHour;
+	      const overlaps = slotStart < b.end && slotEnd > b.start;
+	      return overlaps || startsTooCloseBefore || endsTooCloseAfter;
+	    });
+	  });
+
+	    const btn = document.createElement("button");
+	    btn.textContent = `${slotStart.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} - ${available.length} available`;
+	    btn.className = "button";
+	    btn.disabled = available.length === 0;
+	    btn.onclick = () => displayAvailableAgentsForSlot(available, slotStart);
+
+	    grid.appendChild(btn);
+	  }
+
+	  container.appendChild(grid);
+	}
+
+	function displayAvailableAgentsForSlot(agentList, slotStart) {
+	  document.getElementById("timeSlotsContainer").classList.add("hidden");
+	
+	  const container = document.getElementById("appointmentFormContainer");
+	  container.classList.remove("hidden");
+	  container.innerHTML = ""; // Clear previous contents
+	
+	  const readableTime = slotStart.toLocaleString([], {
+	    weekday: 'short',
+	    hour: 'numeric',
+	    minute: '2-digit'
+	  });
+	
+	  const backBtn = document.createElement("span");
+	  backBtn.className = "back-button";
+	  backBtn.textContent = "← Back";
+	  backBtn.onclick = goBackToCalendar;
+	  container.appendChild(backBtn);
+	
+	  const heading = document.createElement("h4");
+	  heading.textContent = `Available Agents for ${readableTime}`;
+	  container.appendChild(heading);
+	
+	  const table = document.createElement("table");
+	  const headerRow = document.createElement("tr");
+	  headerRow.innerHTML = "<th>Photo</th><th>Name</th><th>Action</th>";
+	  table.appendChild(headerRow);
+	
+	  agentList.forEach(({ agent }) => {
+	    const row = document.createElement("tr");
+	
+	    const photo = document.createElement("td");
+	    const img = document.createElement("img");
+	    img.src = agent.picture?.["60x60"] || "";
+	    img.alt = agent.name;
+	    photo.appendChild(img);
+	
+	    const name = document.createElement("td");
+	    name.textContent = agent.name;
+	
+	    const action = document.createElement("td");
+	    const btn = document.createElement("button");
+	    btn.className = "button";
+	    btn.style.padding = "5px 10px";
+	    btn.style.fontSize = "12px";
+	    btn.textContent = "Assign and Schedule";
+	    btn.onclick = () => assignAgentToSlot(agent.id, agent.name, slotStart);
+	    action.appendChild(btn);
+	
+	    row.appendChild(photo);
+	    row.appendChild(name);
+	    row.appendChild(action);
+	    table.appendChild(row);
+	  });
+	
+	  container.appendChild(table);
+	}
+
+
+
+	async function assignAgentToSlot(agentId, agentName, slotStartIso) {
+	  // 1. Update the assigned agent globally for use in appointment form
+	  window.assignedAgentId = agentId;
+	  window.assignedAgentName = agentName;
+	
+	  // 2. Reassign the lead to the selected agent with custom metadata
+	  const apiKey = "ZmthXzBLbFZIZVBiSUU3d0VveW5NM1VZaTIzbUNXa3NQTWd0RWM6";
+	  const personId = window.contextPersonId;
+	  const url = `https://api.followupboss.com/v1/people/${personId}`;
+	
+	  const payload = {
+	    assignedUserId: agentId,
+	    customLastAssignedAgent: agentName,
+	    customLastAssignedAgentDate: new Date().toISOString(),
+	    customLastAssigningUser: window.contextUserName
+	  };
+	
+	  try {
+	    const res = await fetch(url, {
+	      method: "PUT",
+	      headers: {
+	        "accept": "application/json",
+	        "content-type": "application/json",
+	        "authorization": `Basic ${apiKey}`
+	      },
+	      body: JSON.stringify(payload)
+	    });
+	
+	    if (!res.ok) throw new Error("Failed PUT");
+	
+	    const data = await res.json();
+	
+	    if (data.assignedUserId === agentId) {
+	      // Instead of just going back, show a result view
+	      showAvailableAgentResult(agentId, agentName);
+	    } else {
+	      throw new Error("Response did not confirm assignment.");
+	    }
+	  } catch (err) {
+	    showBanner("That didn't work...Try again, or pick a different agent.", "error");
+	    console.error(err);
+	  }
+	}
+
+    function startRedistribute() {
+      const loading = document.getElementById("redistributeLoading");
+      if (loading) loading.classList.add("hidden");
+      document.getElementById("redistributeResult").classList.add("hidden");
+
+      getMostRecentZipForRedistribute();
+    }
+
+    async function getMostRecentZipForRedistribute() {
+      if (!window.contextPersonId) {
+        alert("Person ID missing from context.");
+        goBack();
+        return;
+      }
+
+      const apiKey = "ZmthXzBLbFZIZVBiSUU3d0VveW5NM1VZaTIzbUNXa3NQTWd0RWM6";
+      const url = `https://api.followupboss.com/v1/events?limit=10&offset=0&personId=${window.contextPersonId}&type=Inquiry%2C%20Seller%20Inquiry%2C%20Property%20Inquiry%2C%20General%20Inquiry&hasProperty=true`;
+
+      try {
+        const res = await fetch(url, {
+          headers: {
+            "accept": "application/json",
+            "authorization": `Basic ${apiKey}`
+          }
+        });
+
+        if (!res.ok) throw new Error("Events API error");
+
+        const data = await res.json();
+
+        const sorted = data.events
+          .filter(ev => ev.property?.code)
+          .sort((a, b) => new Date(b.created) - new Date(a.created));
+
+        if (sorted.length > 0) {
+          const zip = sorted[0].property.code;
+          console.log("Most recent inquiry zip:", zip);
+          findGroupAndRedistribute(zip);
+        } else {
+        showBanner("No Recent Property inquiry found! Try typing a zip in the Find an agent tool!", "error");
+          goBack();
+        }
+      } catch (e) {
+        console.error(e);
+        showBanner("No Recent Property inquiry found! Try typing a zip in the Find an agent tool!", "error");
+        goBack();
+      }
+    }
+
+    async function findGroupAndRedistribute(zip) {
+	  let entry = zipGroupsData.find(item => item.zip === zip);
+	  if (!entry) {
+	    entry = await findClosestZipEntry(zip);
+	    if (!entry) {
+	  	  alert("No matching group found for this zip code.");
+		  goBack();
+		  return;
+	    }
+	  console.log('⚠️ No exact match for ${zip}. Using closest zip ${entry.zip}.', "error");
+	  }
+
+      // Load group details
+      const apiKey = "ZmthXzBLbFZIZVBiSUU3d0VveW5NM1VZaTIzbUNXa3NQTWd0RWM6";
+      const url = `https://api.followupboss.com/v1/groups/${entry.groupId}`;
+
+      try {
+        const res = await fetch(url, {
+          headers: {
+            "accept": "application/json",
+            "authorization": `Basic ${apiKey}`
+          }
+        });
+
+        if (!res.ok) throw new Error("Group API error");
+
+        const data = await res.json();
+
+        const nextUserId = data.nextRoundRobinUser;
+        const nextUser = data.users.find(u => u.id === nextUserId);
+
+        if (!nextUser) {
+          showBanner("Couldn't find the next Agent in line!", "error");
+          goBack();
+          return;
+        }
+
+        // Perform the reassignment
+        await confirmRedistribution(nextUser, entry, zip);
+      } catch (e) {
+        console.error(e);
+        showBanner("Couldn't pull group details", "error");
+        goBack();
+      }
+    }
+
+	async function confirmRedistribution(agent, entry, zip) {
+	  window.redistributeAgent = agent;
+	  window.redistributeEntry = entry;
+	  window.redistributeZip = zip;
+	
+	  const apiKey = "ZmthXzBLbFZIZVBiSUU3d0VveW5NM1VZaTIzbUNXa3NQTWd0RWM6";
+	  const personId = window.contextPersonId;
+	  const url = `https://api.followupboss.com/v1/people/${personId}?fields=assignedTo`;
+	
+	  try {
+	    const res = await fetch(url, {
+	      headers: {
+	        "accept": "application/json",
+	        "authorization": `Basic ${apiKey}`
+	      }
+	    });
+	
+	    if (!res.ok) throw new Error("Failed to get current assignment");
+	
+	    const data = await res.json();
+	    const personName = window.contextPersonName || "this lead";
+	
+	    // Use assignedTo directly — if it's an object, fallback to "Unassigned"
+	    const currentAssignee = typeof data.assignedTo === "string"
+	      ? data.assignedTo
+	      : data.assignedTo || "Unassigned";
+	
+	    let container = document.getElementById("confirmationContainer");
+	    if (!container) {
+	      createConfirmationContainer(); // adds to DOM
+	      container = document.getElementById("confirmationContainer");
+	    }
+	
+	    showView("confirmationContainer");
+
+	
+	    container.innerHTML = `
+	      <h3>Confirm Reassignment</h3>
+	      <p>Are you sure you want to reassign <strong>${personName}</strong><br>
+	      from <strong>${currentAssignee}</strong> to <strong>${agent.name}</strong> in <strong>${entry.group}</strong>?</p>
+	
+	      <div style="display: flex; justify-content: center; gap: 10px; margin-top: 10px;">
+	        <button class="button" onclick='goBack()' style="background-color: #dc2626; color: white;">
+	          ⬅️ Cancel ❌
+	        </button>
+	        <button class="button" onclick='executeRedistribution(window.redistributeAgent, window.redistributeEntry, "${zip}")'>
+	          ✅ Confirm ➡️
+	        </button>
+	      </div>
+	    `;
+	
+	    container.classList.remove("hidden");
+	    container.classList.add("swipe-up-enter");
+	    setTimeout(() => container.classList.remove("swipe-up-enter"), 400);
+	
+	  } catch (err) {
+	    console.error(err);
+	    alert("❌ Failed to confirm reassignment.");
+	    goBack();
+	  }
+	}
+
+
+
+	function createConfirmationContainer() {
+	  const div = document.createElement("div");
+	  div.id = "confirmationContainer";
+	  div.className = "view";
+	  document.body.appendChild(div);
+	  return div;
+	}
+
+
+    async function executeRedistribution(agent, entry, zip) {
+      if (!window.contextPersonId) {
+        alert("Person ID missing from context.");
+        goBack();
+        return;
+      }
+
+      const apiKey = "ZmthXzBLbFZIZVBiSUU3d0VveW5NM1VZaTIzbUNXa3NQTWd0RWM6";
+      const url = `https://api.followupboss.com/v1/people/${window.contextPersonId}?mergeTags=false`;
+
+	  const payload = {
+	    assignedUserId: agent.id,
+	    customLastAssignedAgent: agent.name,
+	    customLastAssignedAgentDate: new Date().toISOString(),
+	    customLastAssigningUser: window.contextUserName
+  	  };
+
+      try {
+        const res = await fetch(url, {
+          method: "PUT",
+          headers: {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "authorization": `Basic ${apiKey}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error("PUT failed");
+
+        const data = await res.json();
+
+        if (data.assignedUserId === agent.id) {
+          showRedistributeResult(agent, entry, zip);
+        } else {
+  	  showBanner("No Recent Property inquiry found! Try typing a zip in the Find an agent tool!", "error");
+  	  setTimeout(() => goBack(), 1000); // Allow banner to render before view switches
+	}
+      } catch (e) {
+  	console.error(e);
+  	showBanner("No Recent Property inquiry found! Try typing a zip in the Find an agent tool!", "error");
+  	setTimeout(() => goBack(), 1000); // Allow banner to render before view switches
+      }
+    }
+
+	  
+function showRedistributeResult(agent, entry, zip) {
+  // ✅ Switch to the correct view first
+  showView("redistributeView");
+
+  // Ensure calendar views are hidden when showing result
+  document.getElementById("calendarLoading").classList.add("hidden");
+  document.getElementById("calendarContainer").classList.add("hidden");
+  document.getElementById("timeSlotsContainer").classList.add("hidden");
+  document.getElementById("appointmentFormContainer").classList.add("hidden");
+
+  const container = document.getElementById("redistributeResult");
+  window.assignedAgentId = agent.id;
+
+  container.innerHTML = `
+    <p><strong>Redistribution Complete!</strong></p>
+    <p>Zip: ${zip}</p>
+    <p>Team: ${entry.team}</p>
+    <p>Group: ${entry.group}</p>
+    <table>
+      <tr>
+        <th>Photo</th>
+        <th>Name</th>
+        <th>Action</th>
+      </tr>
+      <tr>
+        <td><img src="${agent.picture["60x60"]}" alt="${agent.name}" /></td>
+        <td>${agent.name}</td>
+        <td>
+          <button type="button" class="button" style="padding:5px 10px; font-size:12px;"
+            onclick="scheduleAppointment()">
+            Schedule an Appointment
+          </button>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  document.getElementById("redistributeLoading").classList.add("hidden");
+  container.classList.remove("hidden");
+}
+
+
+	async function initApptSetterForAssignedAgent() {
+	  if (!window.contextPersonId) {
+	    alert("Missing personId in context.");
+	    return;
+	  }
+	
+	  // Hide appointment options to prevent stacking
+	  document.getElementById("apptSetterOptions").classList.add("hidden");
+	
+	  const apiKey = "ZmthXzBLbFZIZVBiSUU3d0VveW5NM1VZaTIzbUNXa3NQTWd0RWM6";
+	  const url = `https://api.followupboss.com/v1/people/${window.contextPersonId}`;
+	
+	  try {
+	    const res = await fetch(url, {
+	      headers: {
+	        "accept": "application/json",
+	        "authorization": `Basic ${apiKey}`
+	      }
+	    });
+	
+	    if (!res.ok) throw new Error("Failed to load person details");
+	    const data = await res.json();
+	
+	    const userId = data.assignedUserId;
+	    if (!userId) {
+	      alert("No assigned user found for this lead.");
+	      return;
+	    }
+	
+	    // Store assigned agent details globally
+	    window.assignedAgentId = userId;
+	    window.assignedAgentName = data.assignedTo?.name || "Assigned Agent";
+	
+	    // ✅ Fix null name in calendar titles
+	    window.contextPersonName = data.name || "Unknown Lead";
+	
+	    // Swap to calendar view
+	    showView("redistributeView");
+	    document.getElementById("calendarLoading").classList.remove("hidden");
+	
+	    // Load appointments slightly delayed to allow UI rendering
+	    setTimeout(loadAgentAppointments, 50);
+	
+	  } catch (e) {
+	    console.error(e);
+	    alert("Failed to load assigned agent. Try using 'Help me find one!' instead.");
+	  }
+	}
+
+
+	function scheduleAppointment() {
+		document.getElementById("redistributeResult").classList.add("hidden");
+                document.getElementById("calendarLoading").classList.remove("hidden");
+
+
+
+		// Call load AFTER setting spinner
+		setTimeout(loadAgentAppointments, 50);
+
+	}
+
+	async function loadAgentAppointments() {
+	  if (!window.assignedAgentId) {
+		alert("No assigned agent found for scheduling.");
+		return;
+	  }
+
+	  const apiKey = "ZmthXzBLbFZIZVBiSUU3d0VveW5NM1VZaTIzbUNXa3NQTWd0RWM6";
+	  const url = `https://api.followupboss.com/v1/appointments?userId=${window.assignedAgentId}&limit=100&offset=0`;
+
+	  try {
+		console.log("✅ Scheduling appointments for agentId:", window.assignedAgentId);
+
+		const res = await fetch(url, {
+		  headers: {
+			"accept": "application/json",
+			"authorization": `Basic ${apiKey}`
+		  }
+		});
+
+		if (!res.ok) throw new Error("Appointments API error");
+
+		const data = await res.json();
+		const appointments = data.appointments || [];
+
+		window.agentBusyRanges = parseBusyWindows(appointments, window.assignedAgentId) || [];
+		console.log("✅ Busy ranges loaded:", window.agentBusyRanges);
+
+		document.getElementById("calendarLoading").classList.add("hidden");
+		document.getElementById("calendarContainer").classList.remove("hidden");
+
+		renderMiniCalendar();
+
+	  } catch (e) {
+		console.error(e);
+		alert("Failed to load agent appointments.");
+		document.getElementById("calendarLoading").classList.add("hidden");
+	  }
+	}
+
+	function renderMiniCalendar() {
+	  const container = document.getElementById("calendarContainer");
+	  container.innerHTML = "<h3>Select a Date:</h3>";
+
+	  const grid = document.createElement("div");
+	  grid.className = "calendar-grid";
+
+	  const today = new Date();
+	  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+	  // Headers
+	  for (const d of dayNames) {
+		const header = document.createElement("div");
+		header.style.fontWeight = "bold";
+		header.style.textAlign = "center";
+		header.textContent = d;
+		grid.appendChild(header);
+	  }
+
+	  // Blank cells if first day isn't Sunday
+	  const firstDate = new Date(today);
+	  const weekday = firstDate.getDay();
+	  for (let i = 0; i < weekday; i++) {
+		grid.appendChild(document.createElement("div"));
+	  }
+
+	  for (let i = 0; i < 14; i++) {
+		const date = new Date(today);
+		date.setDate(today.getDate() + i);
+
+		const label = date.getDate();
+
+		const btn = document.createElement("button");
+		btn.textContent = label;
+		btn.className = "button";
+		btn.style.fontSize = "14px";
+		btn.onclick = () => renderTimeSlots(date);
+
+		grid.appendChild(btn);
+	  }
+
+	  container.appendChild(grid);
+	}
+
+	function renderTimeSlots(date) {
+	  document.getElementById("calendarContainer").classList.add("hidden");
+	  document.getElementById("timeSlotsContainer").classList.remove("hidden");
+
+	  const container = document.getElementById("timeSlotsContainer");
+	  container.innerHTML = `
+		<span class="back-button" onclick="goBackToCalendar()">← Back to Calendar</span>
+		<h4>${date.toDateString()}</h4>
+	  `;
+
+	  const grid = document.createElement("div");
+	  grid.className = "time-grid";
+
+	  for (let hour = 9; hour <= 18; hour++) {
+		const slotStart = new Date(date);
+		slotStart.setHours(hour, 0, 0, 0);
+
+		const slotEnd = new Date(slotStart);
+		slotEnd.setHours(hour + 1);
+
+		const isBusy = window.agentBusyRanges.some(busy =>
+		  slotStart < busy.end && slotEnd > busy.start
+		);
+
+		const slotLabel = slotStart.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+		const btn = document.createElement("button");
+		btn.textContent = slotLabel;
+		btn.className = "button";
+
+		if (isBusy) {
+		  btn.classList.add("busy-slot");
+		  btn.title = "Agent is busy at this time";
+		  btn.onclick = () => alert("This agent is not available at that time.");
+		} else {
+		  btn.onclick = () => showAppointmentForm(date, slotStart);
+		}
+
+		grid.appendChild(btn);
+
+	  }
+
+	  container.appendChild(grid);
+	}
+
+	async function assignAgentToSlot(agentId, agentName, slotStartIso) {
+	  // 1. Update the assigned agent globally for use in appointment form
+	  window.assignedAgentId = agentId;
+	  window.assignedAgentName = agentName;
+	
+	  // 2. Reassign the lead to the selected agent
+	  const apiKey = "ZmthXzBLbFZIZVBiSUU3d0VveW5NM1VZaTIzbUNXa3NQTWd0RWM6";
+	  const personId = window.contextPersonId;
+	  const url = `https://api.followupboss.com/v1/people/${personId}`;
+	
+	  const payload = {
+	    assignedUserId: agentId
+	  };
+	
+	  try {
+	    const res = await fetch(url, {
+	      method: "PUT",
+	      headers: {
+	        "accept": "application/json",
+	        "content-type": "application/json",
+	        "authorization": `Basic ${apiKey}`
+	      },
+	      body: JSON.stringify(payload)
+	    });
+	
+	    if (!res.ok) {
+	      const text = await res.text();
+	      console.error("Failed to reassign agent:", text);
+	      alert("❌ Failed to reassign agent. Appointment not created.");
+	      return;
+	    }
+	
+	    console.log("✅ Agent reassigned to", agentName);
+	
+	    // 3. Proceed to show the appointment form
+	    const slotStart = new Date(slotStartIso);
+	    showAppointmentForm(slotStart, slotStart);
+	
+	  } catch (err) {
+	    console.error("Reassignment failed:", err);
+	    alert("❌ Error during reassignment.");
+	  }
+	}
+
+	// ✅ ADD IT RIGHT HERE:
+	function showAppointmentForm(date, slotStart) {
+	  document.getElementById("timeSlotsContainer").classList.add("hidden");
+
+	  const container = document.getElementById("appointmentFormContainer");
+	  container.innerHTML = "";
+
+	  const typeOptions = [
+	    "CC Buyer - Consultation",
+	    "CC Buyer - Showing Appointment",
+	    "CC Seller - Consultation",
+	    "ISA Buyer - Consultation",
+	    "ISA Buyer - Showing Appt",
+	    "ISA Seller - Consultation"
+	  ];
+
+	  let html = `
+	    <div style="display:flex; flex-direction:column; align-items:center; max-width: 400px; margin: 0 auto;">
+	      <span class="back-button" onclick="goBackToTimeSlots('${date.toISOString()}')">← Back to Time Slots</span>
+	      <h4 style="margin-top:10px;">Schedule Appointment for ${date.toDateString()} at ${slotStart.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'})}</h4>
+	
+	      <label for="apptType" style="margin-top:10px;"><strong>Type:</strong></label>
+	      <select id="apptType" style="margin: 8px 0; width: 100%;">
+	        ${typeOptions.map(opt => `<option value="${opt}">${opt}</option>`).join("")}
+	      </select>
+	
+	      <label for="apptDetails" style="margin-top:10px;"><strong>Details:</strong></label>
+	      <textarea id="apptDetails" rows="3" style="width: 100%; margin-top: 8px;"></textarea>
+	
+	      <button class="button" style="margin-top: 16px;" onclick="submitAppointment('${slotStart.toISOString()}')">
+	        Set Appointment
+	      </button>
+	    </div>
+	  `;
+
+	  container.innerHTML = html;
+	  container.classList.remove("hidden");
+	}
+
+	function goBackToTimeSlots(dateIso) {
+	  document.getElementById("appointmentFormContainer").classList.add("hidden");
+	  renderTimeSlots(new Date(dateIso));
+	}
+
+
+	async function submitAppointment(startIso) {
+	  const type = document.getElementById("apptType").value;
+	  const details = document.getElementById("apptDetails").value || "";
+
+	const type_map = {
+	    "ISA Buyer - Showing Appt": 6,
+	    "ISA Buyer - Consultation": 5,
+	    "ISA Seller - Consultation": 4,
+	    "Buyer Consultation": 7,
+	    "Buyer - First Showings": 8,
+	    "Seller Consultation": 9,
+	    "Buyer - Zoom/Phone Call Appt": 10,
+	    "Seller - Zoom/Phone Call Appt": 11,
+	    "Under Contract Appt": 12,
+	    "CC Buyer - Showing Appointment": 13,
+	    "CC Buyer - Consultation": 14,
+	    "CC Seller - Consultation": 15,
+	    "Buyer - Addl Showings": 16    
+	}
+
+	  const typeId = type_map[type] || null;
+
+	  const start = new Date(startIso);
+	  const end = new Date(start);
+	  end.setHours(start.getHours() + 1);
+
+	// Ensure agent name is accurate from the API before submitting appointment
+	if (!window.assignedAgentName || window.assignedAgentName === "Assigned Agent") {
+	  try {
+	    const personUrl = `https://api.followupboss.com/v1/people/${window.contextPersonId}?fields=assignedUserId,assignedTo`;
+	    const personRes = await fetch(personUrl, {
+	      headers: {
+	        "accept": "application/json",
+	        "authorization": `Basic ZmthXzFlaUFMTjRieWxrMFpmNE0zRWFOMnJGR2ZmRW15Sk9QaFg6`
+	      }
+	    });
+	
+	    if (personRes.ok) {
+	      const personData = await personRes.json();
+	      window.assignedAgentName = personData.assignedTo || "Assigned Agent";
+	    } else {
+	      console.warn("Could not fetch assigned agent name. Using fallback.");
+	    }
+	  } catch (err) {
+	    console.error("Agent name fetch failed:", err);
+	  }
+	}
+
+	  const payload = {
+	    title: `${type} - ${window.assignedAgentName} and ${window.contextPersonName}`,
+	    description: details,
+	    start: start.toISOString(),
+	    end: end.toISOString(),
+	    createdById: window.contextUserId,
+	    typeId: typeId,
+	    invitees: [
+	      {
+	        userId: window.assignedAgentId,
+	        userName: window.assignedAgentName
+	      },
+	      {
+	        personId: window.contextPersonId
+	      },
+	      {
+	        userId: window.contextUserId,
+	        userName: window.contextUserName
+	      }
+	    ]
+	  };
+
+	  const apiKey = "ZmthXzBLbFZIZVBiSUU3d0VveW5NM1VZaTIzbUNXa3NQTWd0RWM6";
+	  const url = "https://api.followupboss.com/v1/appointments?sendInvitation=true";
+
+	  try {
+	    const res = await fetch(url, {
+	      method: "POST",
+	      headers: {
+	        "accept": "application/json",
+	        "content-type": "application/json",
+	        "authorization": `Basic ${apiKey}`
+	      },
+	      body: JSON.stringify(payload)
+	    });
+
+	    if (!res.ok) {
+	      const text = await res.text();
+	      console.error("Appointment create error:", text);
+	      alert("❌ Failed to create appointment: " + text);
+	      return;
+	    }
+
+	    const data = await res.json();
+	    console.log("✅ Appointment created!", data);
+	    alert("✅ Appointment successfully created!");
+
+	    // Go back to main menu or somewhere else
+	    goBack();
+
+	  } catch (err) {
+	    console.error(err);
+	    alert("❌ Failed to create appointment. Check console for details.");
+	  }
+	}
+
+
+
+	function goBackToCalendar() {
+	  document.getElementById("timeSlotsContainer").classList.add("hidden");
+	  document.getElementById("calendarContainer").classList.remove("hidden");
+	}
+
+	async function showAvailableAgentResult(userId, userName) {
+	  // Find the last searched entry so we know team, group etc.
+	  const zip = window.lastZipSearch;
+	  const entry = zipGroupsData.find(item => item.zip === zip);
+
+	  if (!entry) {
+		alert("Could not find zip group data for confirmation view.");
+		goBack();
+		return;
+	  }
+
+	  // Load agent photo from API so we can show it
+	  const apiKey = "ZmthXzBLbFZIZVBiSUU3d0VveW5NM1VZaTIzbUNXa3NQTWd0RWM6";
+	  const url = `https://api.followupboss.com/v1/users/${userId}`;
+	  try {
+		const res = await fetch(url, {
+		  headers: {
+			"accept": "application/json",
+			"authorization": `Basic ${apiKey}`
+		  }
+		});
+		if (!res.ok) throw new Error("Failed to load agent info");
+
+		const userData = await res.json();
+
+		window.assignedAgentId = userId;
+		window.assignedAgentName = userName;
+
+		// ✅ Hide all sub-views of the redistribute view so nothing remains visible underneath
+		document.getElementById("calendarLoading").classList.add("hidden");
+		document.getElementById("calendarContainer").classList.add("hidden");
+		document.getElementById("timeSlotsContainer").classList.add("hidden");
+		document.getElementById("appointmentFormContainer").classList.add("hidden");
+
+		const container = document.getElementById("redistributeResult");
+
+		container.innerHTML = `
+		  <p><strong>Reassignment Complete!</strong></p>
+		  <p>Zip: ${zip}</p>
+		  <p>Team: ${entry.team}</p>
+		  <p>Group: ${entry.group}</p>
+		  <table>
+			<tr>
+			  <th>Photo</th>
+			  <th>Name</th>
+			  <th>Action</th>
+			</tr>
+			<tr>
+			  <td><img src="${userData.picture["60x60"]}" alt="${userName}" /></td>
+			  <td>${userName}</td>
+			  <td>
+				<button type="button" class="button" style="padding:5px 10px; font-size:12px;"
+				  onclick="scheduleAppointment()">
+				  Schedule an Appointment
+				</button>
+			  </td>
+			</tr>
+		  </table>
+		`;
+
+		document.getElementById("agentsTableContainer").classList.add("hidden");
+		document.getElementById("agentsLoading").classList.add("hidden");
+		document.getElementById("agentsForm").classList.add("hidden");
+
+		// Switch views cleanly
+		showView("redistributeView");
+		document.getElementById("redistributeResult").classList.remove("hidden");
+
+	  } catch (err) {
+		console.error(err);
+		alert("Could not load agent details for confirmation view.");
+		goBack();
+	  }
+	}
+
+
+	function parseBusyWindows(appointments, agentId) {
+	  const bufferMs = 60 * 60 * 1000; // 1 hour buffer before and after
+
+	  return appointments
+	    .filter(appt =>
+	      Array.isArray(appt.invitees) &&
+	      appt.invitees.some(invitee => invitee.userId === agentId)
+	    )
+	    .map(appt => {
+	      const start = new Date(appt.start);
+	      const end = new Date(appt.end);
+	      return {
+	        start: new Date(start.getTime() - bufferMs),
+	        end: new Date(end.getTime() + bufferMs)
+	      };
+	    });
+	}
+
+
+	function showBanner(message, type = "info", duration = 4000) {
+	  const banner = document.getElementById("notificationBanner");
+	  banner.className = ""; // Clear previous state
+	  banner.textContent = message;
+
+	  // Add correct styling class
+	  banner.classList.add(
+	    type === "error" ? "error" :
+	    type === "success" ? "success" :
+	    type === "warning" ? "warning" : "info"
+	  );
+
+	  banner.classList.remove("hidden");
+
+	  // Auto-hide after duration
+	  setTimeout(() => {
+	    banner.classList.add("hidden");
+	  }, duration);
+	}
+
+        function submitSupport() {
+          const details = document.getElementById("supportDetails").value.trim();
+          if (!details) {
+            showBanner("Please enter some details before submitting.", "warning");
+            return;
+          }
+        
+          const payload = {
+            name: window.contextUserName,
+            email: window.contextUserEmail,
+            leadName: window.contextPersonName,
+            leadId: window.contextPersonId,
+            message: details
+          };
+        
+          fetch("https://eoiuoeyusvrvspx.m.pipedream.net/", {
+            method: "POST",
+	    mode: "cors",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+          })
+            .then(response => {
+              if (!response.ok) throw new Error("Failed to submit support request.");
+              showView("supportThanksView");
+            })
+            .catch(error => {
+              console.error("Support submission error:", error);
+              showBanner("There was a problem submitting your support request.", "error");
+            });
+        }
+
+	
+
+
+
+  </script>
+</body>
+</html>
